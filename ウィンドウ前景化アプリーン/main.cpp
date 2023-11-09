@@ -21,7 +21,8 @@ static TCHAR colorstr[50];
 POINT mouse_p;
 static TCHAR mousestr[50];
 
-void change();
+void set_foreground();
+void set_transparency(int);
 HWND hWnd;
 HWND puyoWnd;
 
@@ -36,7 +37,7 @@ int CALLBACK WinMain(
     WNDCLASSEX wcex;
 
     wcex.cbSize = sizeof(WNDCLASSEX);
-    wcex.style = CS_HREDRAW | CS_VREDRAW;
+http://wcex.style = CS_HREDRAW | CS_VREDRAW;
     wcex.lpfnWndProc = WndProc;
     wcex.cbClsExtra = 0;
     wcex.cbWndExtra = 0;
@@ -82,17 +83,17 @@ int CALLBACK WinMain(
         return 1;
     }
 
-    
-
     SetWindowPos(hWnd, NULL, 0, 0, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
 
     ShowWindow(hWnd, nCmdShow);
     UpdateWindow(hWnd);
 
-    
-
     MSG msg;
-    BOOL keyflg = false;
+    BOOL zero_keyflag = false;
+    BOOL one_keyflag = false;
+    BOOL two_keyflag = false;
+    BOOL three_keyflag = false;
+    BOOL trans_keyflag[9];
     while (true)
     {
         Sleep(50);
@@ -106,29 +107,53 @@ int CALLBACK WinMain(
             }
         }
         else {
-            
 
-            if (GetAsyncKeyState(0x30) & 0x8000 && GetAsyncKeyState(VK_CONTROL) & 0x8000){
-                if (!keyflg) {
-                    //キーを押した瞬間の処理
-                    keyflg = true;
-                    change();
+            if (!(GetAsyncKeyState(VK_CONTROL) & 0x8000)) {
+                zero_keyflag = false;
+                for (int i = 0; i < 9; i++) {
+                    trans_keyflag[i] = false;
                 }
-                //キーを押している間の処理
+
             }
             else {
-                //キーを離している間の処理
-                keyflg = false;
+                if (GetAsyncKeyState(0x30) & 0x8000 && !zero_keyflag) {
+                    //キーを押した瞬間の処理
+                    zero_keyflag = true;
+                    set_foreground();
+                }
+                for (int i = 1; i < 10; i++) {
+                    if (GetAsyncKeyState(0x30 + i) & 0x8000 && !trans_keyflag[i - 1]) {
+                        trans_keyflag[i - 1] = true;
+
+                        int transparency = (255 * i) / 9;
+                        set_transparency(transparency);
+
+                    }
+                }
+
             }
+
         }
     }
 
     return (int)msg.wParam;
 }
 
+void set_transparency(int transparency) {
+    HWND curWindow = GetForegroundWindow();
 
-void change() {
-    
+    // ウィンドウの長いスタイルを取得
+    LONG_PTR lStyle = GetWindowLongPtr(curWindow, GWL_EXSTYLE);
+
+    // WS_EX_LAYERED スタイルを設定
+    SetWindowLongPtr(curWindow, GWL_EXSTYLE, lStyle | WS_EX_LAYERED);
+
+    // 不透明度を設定（0（完全に透明）から255（完全に不透明））
+    SetLayeredWindowAttributes(curWindow, 0, transparency, LWA_ALPHA);
+}
+
+void set_foreground() {
+
     HWND curWindow = GetForegroundWindow();//FindWindowA("Chrome_WidgetWin_1",NULL);
     if (curWindow == NULL) {
         TCHAR coldebug[50];
@@ -150,7 +175,6 @@ void change() {
         _stprintf_s(coldebug, 50, TEXT("NOTOP"));
         SetWindowText(hWnd, coldebug);
     }
-        
 
 }
 
@@ -173,7 +197,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         EndPaint(hWnd, &ps);
 
         break;
-  
+
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
